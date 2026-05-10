@@ -164,7 +164,7 @@ model User {
 
 model ApprovalThreshold {
   id                  Int      @id @default(autoincrement())
-  name                String   // e.g., "Tier 1", "Tier 2"
+  name                String   @unique // e.g., "Tier 1", "Tier 2"
   originType          String   // "branch", "hq", "field", "any"
   minAmount           Decimal  @db.Decimal(14, 2) @default(0)
   maxAmount           Decimal  @db.Decimal(14, 2) @default(999999999)
