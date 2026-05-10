@@ -1,10 +1,16 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { initializeSuperuser } from './init-superuser';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Starting database seed...');
+
+  // Initialize superuser from environment variables
+  console.log('📋 Initializing superuser from environment variables...');
+  await initializeSuperuser();
+  console.log('');
 
   // Create companies
   const company1 = await prisma.company.create({
@@ -340,6 +346,11 @@ async function main() {
   console.log('- Treasury: treasury@cht.local (password: demo123)');
   console.log('- CFO: cfo@cht.local (password: demo123)');
   console.log('- CEO: ceo@cht.local (password: demo123)');
+  console.log('');
+  console.log('🔐 Superuser Configuration:');
+  console.log('- Email: ' + (process.env.SUPERUSER_EMAIL || 'admin@cht.local'));
+  console.log('- Username: ' + (process.env.SUPERUSER_USERNAME || 'admin'));
+  console.log('- Created from environment variables: SUPERUSER_EMAIL, SUPERUSER_USERNAME, SUPERUSER_PASSWORD');
 }
 
 main()
