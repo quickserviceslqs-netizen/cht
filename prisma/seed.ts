@@ -12,38 +12,46 @@ async function main() {
   await initializeSuperuser();
   console.log('');
 
-  // Create companies
-  const company1 = await prisma.company.create({
-    data: {
+  // Create companies (idempotent)
+  const company1 = await prisma.company.upsert({
+    where: { code: 'QSL' },
+    update: {},
+    create: {
       name: 'Quick Services Ltd',
       code: 'QSL',
     },
   });
 
-  console.log(`✅ Created company: ${company1.name}`);
+  console.log(`✅ Company: ${company1.name}`);
 
-  // Create regions
-  const region1 = await prisma.region.create({
-    data: {
+  // Create regions (idempotent)
+  const region1 = await prisma.region.upsert({
+    where: { code_companyId: { code: 'CR', companyId: company1.id } },
+    update: {},
+    create: {
       name: 'Central Region',
       code: 'CR',
       companyId: company1.id,
     },
   });
 
-  const region2 = await prisma.region.create({
-    data: {
+  const region2 = await prisma.region.upsert({
+    where: { code_companyId: { code: 'COASTAL', companyId: company1.id } },
+    update: {},
+    create: {
       name: 'Coastal Region',
       code: 'COASTAL',
       companyId: company1.id,
     },
   });
 
-  console.log('✅ Created regions');
+  console.log('✅ Regions');
 
-  // Create branches
-  const branch1 = await prisma.branch.create({
-    data: {
+  // Create branches (idempotent)
+  const branch1 = await prisma.branch.upsert({
+    where: { code_companyId: { code: 'NRB', companyId: company1.id } },
+    update: {},
+    create: {
       name: 'Nairobi Branch',
       code: 'NRB',
       companyId: company1.id,
@@ -51,8 +59,10 @@ async function main() {
     },
   });
 
-  const branch2 = await prisma.branch.create({
-    data: {
+  const branch2 = await prisma.branch.upsert({
+    where: { code_companyId: { code: 'MBA', companyId: company1.id } },
+    update: {},
+    create: {
       name: 'Mombasa Branch',
       code: 'MBA',
       companyId: company1.id,
@@ -60,11 +70,13 @@ async function main() {
     },
   });
 
-  console.log('✅ Created branches');
+  console.log('✅ Branches');
 
-  // Create departments
-  const dept1 = await prisma.department.create({
-    data: {
+  // Create departments (idempotent)
+  const dept1 = await prisma.department.upsert({
+    where: { code_companyId: { code: 'FIN', companyId: company1.id } },
+    update: {},
+    create: {
       name: 'Finance Department',
       code: 'FIN',
       companyId: company1.id,
@@ -72,8 +84,10 @@ async function main() {
     },
   });
 
-  const dept2 = await prisma.department.create({
-    data: {
+  const dept2 = await prisma.department.upsert({
+    where: { code_companyId: { code: 'OPS', companyId: company1.id } },
+    update: {},
+    create: {
       name: 'Operations Department',
       code: 'OPS',
       companyId: company1.id,
@@ -81,11 +95,13 @@ async function main() {
     },
   });
 
-  console.log('✅ Created departments');
+  console.log('✅ Departments');
 
-  // Create cost centers
-  await prisma.costCenter.create({
-    data: {
+  // Create cost centers (idempotent)
+  await prisma.costCenter.upsert({
+    where: { code_companyId: { code: 'GO-01', companyId: company1.id } },
+    update: {},
+    create: {
       name: 'General Operations',
       code: 'GO-01',
       companyId: company1.id,
@@ -93,13 +109,15 @@ async function main() {
     },
   });
 
-  console.log('✅ Created cost centers');
+  console.log('✅ Cost centers');
 
-  // Create users with different roles
+  // Create users with different roles (idempotent)
   const hashedPassword = await bcrypt.hash('demo123', 10);
 
-  const staffUser = await prisma.user.create({
-    data: {
+  const staffUser = await prisma.user.upsert({
+    where: { email: 'staff@cht.local' },
+    update: {},
+    create: {
       email: 'staff@cht.local',
       username: 'staff',
       password: hashedPassword,
@@ -113,8 +131,10 @@ async function main() {
     },
   });
 
-  const managerUser = await prisma.user.create({
-    data: {
+  const managerUser = await prisma.user.upsert({
+    where: { email: 'manager@cht.local' },
+    update: {},
+    create: {
       email: 'manager@cht.local',
       username: 'manager',
       password: hashedPassword,
@@ -128,8 +148,10 @@ async function main() {
     },
   });
 
-  const treasuryUser = await prisma.user.create({
-    data: {
+  const treasuryUser = await prisma.user.upsert({
+    where: { email: 'treasury@cht.local' },
+    update: {},
+    create: {
       email: 'treasury@cht.local',
       username: 'treasury',
       password: hashedPassword,
@@ -142,8 +164,10 @@ async function main() {
     },
   });
 
-  const cfoUser = await prisma.user.create({
-    data: {
+  const cfoUser = await prisma.user.upsert({
+    where: { email: 'cfo@cht.local' },
+    update: {},
+    create: {
       email: 'cfo@cht.local',
       username: 'cfo',
       password: hashedPassword,
@@ -156,8 +180,10 @@ async function main() {
     },
   });
 
-  const ceoUser = await prisma.user.create({
-    data: {
+  const ceoUser = await prisma.user.upsert({
+    where: { email: 'ceo@cht.local' },
+    update: {},
+    create: {
       email: 'ceo@cht.local',
       username: 'ceo',
       password: hashedPassword,
@@ -170,11 +196,13 @@ async function main() {
     },
   });
 
-  console.log('✅ Created users');
+  console.log('✅ Users');
 
-  // Create approval thresholds (matching Django logic)
-  const tier1 = await prisma.approvalThreshold.create({
-    data: {
+  // Create approval thresholds (matching Django logic) - idempotent
+  const tier1 = await prisma.approvalThreshold.upsert({
+    where: { name: 'Tier 1 (0-50,000)' },
+    update: {},
+    create: {
       name: 'Tier 1 (0-50,000)',
       originType: 'ANY',
       minAmount: 0,
@@ -188,8 +216,10 @@ async function main() {
     },
   });
 
-  const tier2 = await prisma.approvalThreshold.create({
-    data: {
+  const tier2 = await prisma.approvalThreshold.upsert({
+    where: { name: 'Tier 2 (50,001-200,000)' },
+    update: {},
+    create: {
       name: 'Tier 2 (50,001-200,000)',
       originType: 'ANY',
       minAmount: 50001,
@@ -203,8 +233,10 @@ async function main() {
     },
   });
 
-  const tier3 = await prisma.approvalThreshold.create({
-    data: {
+  const tier3 = await prisma.approvalThreshold.upsert({
+    where: { name: 'Tier 3 (200,001-500,000)' },
+    update: {},
+    create: {
       name: 'Tier 3 (200,001-500,000)',
       originType: 'ANY',
       minAmount: 200001,
@@ -218,8 +250,10 @@ async function main() {
     },
   });
 
-  const tier4 = await prisma.approvalThreshold.create({
-    data: {
+  const tier4 = await prisma.approvalThreshold.upsert({
+    where: { name: 'Tier 4 (500,001+)' },
+    update: {},
+    create: {
       name: 'Tier 4 (500,001+)',
       originType: 'ANY',
       minAmount: 500001,
@@ -233,11 +267,13 @@ async function main() {
     },
   });
 
-  console.log('✅ Created approval thresholds');
+  console.log('✅ Approval thresholds');
 
-  // Create treasury funds
-  const fund1 = await prisma.treasuryFund.create({
-    data: {
+  // Create treasury funds - idempotent by companyId + branchId
+  const fund1 = await prisma.treasuryFund.upsert({
+    where: { companyId_branchId: { companyId: company1.id, branchId: branch1.id } },
+    update: {},
+    create: {
       companyId: company1.id,
       branchId: branch1.id,
       currentBalance: 500000,
@@ -247,8 +283,10 @@ async function main() {
     },
   });
 
-  const fund2 = await prisma.treasuryFund.create({
-    data: {
+  const fund2 = await prisma.treasuryFund.upsert({
+    where: { companyId_branchId: { companyId: company1.id, branchId: branch2.id } },
+    update: {},
+    create: {
       companyId: company1.id,
       branchId: branch2.id,
       currentBalance: 300000,
@@ -258,11 +296,13 @@ async function main() {
     },
   });
 
-  console.log('✅ Created treasury funds');
+  console.log('✅ Treasury funds');
 
-  // Create sample requisitions
-  const req1 = await prisma.requisition.create({
-    data: {
+  // Create sample requisitions - idempotent by transactionId
+  const req1 = await prisma.requisition.upsert({
+    where: { transactionId: 'REQ-001' },
+    update: {},
+    create: {
       transactionId: 'REQ-001',
       requestedById: staffUser.id,
       companyId: company1.id,
@@ -280,8 +320,10 @@ async function main() {
     },
   });
 
-  const req2 = await prisma.requisition.create({
-    data: {
+  const req2 = await prisma.requisition.upsert({
+    where: { transactionId: 'REQ-002' },
+    update: {},
+    create: {
       transactionId: 'REQ-002',
       requestedById: staffUser.id,
       companyId: company1.id,
@@ -300,9 +342,9 @@ async function main() {
     },
   });
 
-  console.log('✅ Created sample requisitions');
+  console.log('✅ Sample requisitions');
 
-  // Create approval trail entries
+  // Create approval trail entries (these can be created fresh each time as they're not unique)
   await prisma.approvalTrail.create({
     data: {
       requisitionId: req1.id,
