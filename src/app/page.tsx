@@ -7,9 +7,11 @@ export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setIsLoading(true);
     try {
       const response = await fetch('/api/auth/login', {
@@ -17,12 +19,21 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      if (response.ok) {
-        // TODO: Redirect to dashboard
+
+      const data = await response.json();
+
+      if (response.ok && data.token) {
+        // Store token in localStorage
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        // Redirect to dashboard
         window.location.href = '/dashboard';
+      } else {
+        setError(data.error || 'Login failed');
       }
     } catch (error) {
       console.error('Login failed', error);
+      setError('An error occurred during login');
     } finally {
       setIsLoading(false);
     }
@@ -38,6 +49,12 @@ export default function Home() {
           <p className="text-gray-600 text-center mb-8">
             Cash. Harmony. Transparent.
           </p>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
