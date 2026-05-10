@@ -1,5 +1,5 @@
-// CHT (Cash. Harmony. Transparent.) - Prisma Schema
-// Lightweight cash management system for organizations
+// CHT (Cash. Harmony. Transparent.) - Enhanced Prisma Schema
+// Integrated petty cash system with comprehensive workflow
 // Learn more at: https://pris.ly/d/prisma-schema
 
 generator client {
@@ -11,99 +11,364 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        Int     @id @default(autoincrement())
-  email     String  @unique
-  password  String
-  name      String
-  role      String  // "staff", "manager", "treasurer", "ceo"
-  isActive  Boolean @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ============================================================================
+// ORGANIZATION STRUCTURE
+// ============================================================================
 
-  requisitions    Requisition[]
-  approvals       Approval[]
-  treasuryFunds   TreasuryFund[]
+model Company {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  code        String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  regions     Region[]
+  branches    Branch[]
+  departments Department[]
+  costCenters CostCenter[]
+  users       User[]
+  treasuryFunds TreasuryFund[]
+  requisitions Requisition[]
 }
+
+model Region {
+  id          Int      @id @default(autoincrement())
+  name        String
+  code        String
+  companyId   Int
+  company     Company  @relation(fields: [companyId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  branches    Branch[]
+  users       User[]
+  treasuryFunds TreasuryFund[]
+  requisitions Requisition[]
+
+  @@unique([companyId, code])
+}
+
+model Branch {
+  id          Int      @id @default(autoincrement())
+  name        String
+  code        String
+  companyId   Int
+  regionId    Int?
+  company     Company  @relation(fields: [companyId], references: [id])
+  region      Region?  @relation(fields: [regionId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  departments Department[]
+  users       User[]
+  treasuryFunds TreasuryFund[]
+  requisitions Requisition[]
+
+  @@unique([companyId, code])
+}
+
+model Department {
+  id          Int      @id @default(autoincrement())
+  name        String
+  code        String
+  branchId    Int?
+  companyId   Int
+  branch      Branch?  @relation(fields: [branchId], references: [id])
+  company     Company  @relation(fields: [companyId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  costCenters CostCenter[]
+  treasuryFunds TreasuryFund[]
+  requisitions Requisition[]
+
+  @@unique([companyId, code])
+}
+
+model CostCenter {
+  id          Int      @id @default(autoincrement())
+  name        String
+  code        String
+  departmentId Int?
+  companyId   Int
+  department  Department? @relation(fields: [departmentId], references: [id])
+  company     Company  @relation(fields: [companyId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  requisitions Requisition[]
+
+  @@unique([companyId, code])
+}
+
+// ============================================================================
+// USER & AUTHENTICATION
+// ============================================================================
+
+model User {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  password      String   // Hashed with bcryptjs
+  username      String   @unique
+  firstName     String?
+  lastName      String?
+  phoneNumber   String?
+  role          String   // "staff", "manager", "treasury", "department_head", "cfo", "ceo", "admin"
+  isActive      Boolean  @default(true)
+  
+  // Organization structure
+  companyId     Int?
+  regionId      Int?
+  branchId      Int?
+  departmentId  Int?
+  costCenterId  Int?
+  
+  company       Company?     @relation(fields: [companyId], references: [id])
+  region        Region?      @relation(fields: [regionId], references: [id])
+  branch        Branch?      @relation(fields: [branchId], references: [id])
+  department    Department?  @relation(fields: [departmentId], references: [id])
+  costCenter    CostCenter?  @relation(fields: [costCenterId], references: [id])
+  
+  // Centralized approver flag
+  isCentralizedApprover Boolean @default(false)
+  
+  // Security tracking
+  failedLoginAttempts   Int      @default(0)
+  lockoutUntil          DateTime?
+  lastFailedLogin       DateTime?
+  lastLoginIp           String?
+  lastLoginUserAgent    String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Requisition relations
+  requisitions            Requisition[] @relation("requisitionRequester")
+  changeRequestsMade      Requisition[] @relation("changeRequestedBy")
+  nextApprovals           Requisition[] @relation("nextApprover")
+  
+  // Approval relations
+  approvalTrails          ApprovalTrail[] @relation("approvalTrailUser")
+  approvalTrailChangeRequests ApprovalTrail[] @relation("approvalTrailChangeRequester")
+  
+  // Payment relations
+  createdPayments         Payment[] @relation("createdBy")
+  executedPayments        Payment[] @relation("executedBy")
+}
+
+// ============================================================================
+// APPROVAL WORKFLOW
+// ============================================================================
+
+model ApprovalThreshold {
+  id                  Int      @id @default(autoincrement())
+  name                String   // e.g., "Tier 1", "Tier 2"
+  originType          String   // "branch", "hq", "field", "any"
+  minAmount           Decimal  @db.Decimal(14, 2) @default(0)
+  maxAmount           Decimal  @db.Decimal(14, 2) @default(999999999)
+  rolesSequence       String[] // Ordered list of roles
+  allowUrgentFasttrack Boolean  @default(false)
+  requiresCfo         Boolean  @default(false)
+  requiresCeo         Boolean  @default(false)
+  priority            Int      @default(0)
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  requisitions       Requisition[]
+}
+
+// ============================================================================
+// TRANSACTIONS & REQUISITIONS
+// ============================================================================
 
 model Requisition {
-  id            Int       @id @default(autoincrement())
-  referenceNo   String    @unique @default(uuid())
-  submitterId   Int
-  submitter     User      @relation(fields: [submitterId], references: [id])
-  title         String
-  description   String
-  amount        Float
-  status        String    @default("draft") // draft, submitted, approved, rejected, executed
-  originType    String    // "staff", "manager", "ceo"
-  urgency       String?   // "normal", "urgent"
-  approvalRoute String[]  // IDs of approvers
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                    Int      @id @default(autoincrement())
+  transactionId         String   @unique @default(uuid())
+  requestedById         Int
+  requestedBy           User     @relation("requisitionRequester", fields: [requestedById], references: [id])
+  
+  // Org structure
+  originType            String   // "branch", "hq", "field"
+  companyId             Int
+  company               Company  @relation(fields: [companyId], references: [id])
+  regionId              Int?
+  branchId              Int?
+  departmentId          Int?
+  costCenterId          Int?
+  
+  region                Region?  @relation(fields: [regionId], references: [id])
+  branch                Branch?  @relation(fields: [branchId], references: [id])
+  department            Department? @relation(fields: [departmentId], references: [id])
+  costCenter            CostCenter? @relation(fields: [costCenterId], references: [id])
+  
+  // Request details
+  amount                Decimal  @db.Decimal(14, 2)
+  purpose               String
+  receiptUrl            String?
+  isUrgent              Boolean  @default(false)
+  urgencyReason         String?
+  
+  // Approval workflow
+  appliedThresholdId    Int?
+  appliedThreshold      ApprovalThreshold? @relation(fields: [appliedThresholdId], references: [id])
+  tier                  String?
+  
+  // Workflow state
+  workflowSequence      Json?    // Array of required approvers
+  isFastTracked         Boolean  @default(false)
+  originalWorkflow      Json?    // Original workflow before fast-tracking
+  
+  // Change requests
+  changeRequested       Boolean  @default(false)
+  changeRequestDetails  String?
+  changeRequestedById   Int?
+  changeRequestedBy     User?    @relation("changeRequestedBy", fields: [changeRequestedById], references: [id])
+  changeRequestDeadline DateTime?
+  
+  // Status tracking
+  nextApproverId        Int?
+  nextApprover          User?    @relation("nextApprover", fields: [nextApproverId], references: [id])
+  status                String   @default("draft") // draft, pending, pending_changes, approved, rejected, paid, reviewed
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  approvals Approval[]
-  payments  Payment[]
+  approvalTrails        ApprovalTrail[]
+  payments              Payment[]
+
+  @@index([companyId])
+  @@index([status])
+  @@index([requestedById])
 }
 
-model Approval {
-  id            Int       @id @default(autoincrement())
-  requisitionId Int
-  requisition   Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
-  approverId    Int
-  approver      User      @relation(fields: [approverId], references: [id])
-  status        String    // "pending", "approved", "rejected"
-  comments      String?
-  escalationReason String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+model ApprovalTrail {
+  id                    Int      @id @default(autoincrement())
+  requisitionId         Int
+  requisition           Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  
+  userId                Int?
+  user                  User?    @relation("approvalTrailUser", fields: [userId], references: [id])
+  
+  role                  String   // Role of approver
+  action                String   // approved, validated, paid, reviewed, rejected, changes_requested
+  comment               String?
+  
+  changeRequestedById   Int?
+  changeRequestedBy     User?    @relation("approvalTrailChangeRequester", fields: [changeRequestedById], references: [id])
+  
+  ipAddress             String?
+  autoEscalated         Boolean  @default(false)
+  escalationReason      String?
+  skippedRoles          Json?    // Array of skipped roles
+  override              Boolean  @default(false)
+  
+  timestamp             DateTime @default(now())
+
+  @@index([requisitionId])
+}
+
+// ============================================================================
+// TREASURY & PAYMENTS
+// ============================================================================
+
+model TreasuryFund {
+  id                    String   @id @default(uuid())
+  companyId             Int
+  company               Company  @relation(fields: [companyId], references: [id])
+  regionId              Int?
+  branchId              Int?
+  departmentId          Int?
+  
+  region                Region?  @relation(fields: [regionId], references: [id])
+  branch                Branch?  @relation(fields: [branchId], references: [id])
+  department            Department? @relation(fields: [departmentId], references: [id])
+  
+  currentBalance        Decimal  @db.Decimal(14, 2) @default(0)
+  reorderLevel          Decimal  @db.Decimal(14, 2) @default(50000)
+  minBalance            Decimal? @db.Decimal(14, 2)
+  autoReplenish         Boolean? @default(true)
+  
+  lastReplenished       DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  payments              Payment[]
+  ledgerEntries         LedgerEntry[]
+  replenishments        Replenishment[]
+
+  @@unique([companyId, regionId, branchId, departmentId])
 }
 
 model Payment {
-  id            Int       @id @default(autoincrement())
-  requisitionId Int
-  requisition   Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
-  treasuryFundId Int
-  treasuryFund  TreasuryFund @relation(fields: [treasuryFundId], references: [id])
-  amount        Float
-  status        String    @default("pending") // pending, executed, cancelled
-  executedAt    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-}
+  id                    String   @id @default(uuid())
+  requisitionId         Int?
+  requisition           Requisition? @relation(fields: [requisitionId], references: [id], onDelete: SetNull)
+  
+  treasuryFundId        String
+  treasuryFund          TreasuryFund @relation(fields: [treasuryFundId], references: [id])
+  
+  voucherNumber         String?  @unique
+  amount                Decimal  @db.Decimal(14, 2)
+  method                String   @default("mpesa") // mpesa, bank, cash
+  destination           String   // Phone, account, or recipient
+  description           String?
+  
+  status                String   @default("pending") // pending, executing, success, failed, reconciled
+  
+  createdById           Int?
+  createdBy             User?    @relation("createdBy", fields: [createdById], references: [id])
+  
+  executorId            Int?
+  executor              User?    @relation("executedBy", fields: [executorId], references: [id])
+  executionTimestamp    DateTime?
+  
+  // 2FA
+  otpRequired           Boolean  @default(true)
+  otpHash               String?
+  otpSentTimestamp      DateTime?
+  otpVerified           Boolean  @default(false)
+  otpVerifiedTimestamp  DateTime?
+  
+  // M-Pesa integration
+  mpesaTransactionId    String?
+  mpesaReceiptNumber    String?
+  mpesaStatus           String?   // success, failed, pending
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-model TreasuryFund {
-  id            Int       @id @default(autoincrement())
-  name          String    @unique
-  balance       Float     @default(0)
-  currency      String    @default("KES")
-  treasurerId   Int
-  treasurer     User      @relation(fields: [treasurerId], references: [id])
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  payments      Payment[]
-  ledgerEntries LedgerEntry[]
-  replenishments Replenishment[]
+  @@index([status])
+  @@index([treasuryFundId])
 }
 
 model LedgerEntry {
-  id            Int       @id @default(autoincrement())
-  treasuryFundId Int
-  treasuryFund  TreasuryFund @relation(fields: [treasuryFundId], references: [id], onDelete: Cascade)
-  description   String
-  debit         Float     @default(0)
-  credit        Float     @default(0)
-  balance       Float
-  createdAt     DateTime  @default(now())
+  id                    Int      @id @default(autoincrement())
+  treasuryFundId        String
+  treasuryFund          TreasuryFund @relation(fields: [treasuryFundId], references: [id], onDelete: Cascade)
+  
+  description           String
+  debit                 Decimal  @db.Decimal(14, 2) @default(0)
+  credit                Decimal  @db.Decimal(14, 2) @default(0)
+  balance               Decimal  @db.Decimal(14, 2)
+  
+  createdAt             DateTime @default(now())
+
+  @@index([treasuryFundId])
 }
 
 model Replenishment {
-  id            Int       @id @default(autoincrement())
-  treasuryFundId Int
-  treasuryFund  TreasuryFund @relation(fields: [treasuryFundId], references: [id], onDelete: Cascade)
-  amount        Float
-  status        String    @default("pending") // pending, completed, cancelled
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                    String   @id @default(uuid())
+  treasuryFundId        String
+  treasuryFund          TreasuryFund @relation(fields: [treasuryFundId], references: [id], onDelete: Cascade)
+  
+  amount                Decimal  @db.Decimal(14, 2)
+  status                String   @default("pending") // pending, completed, cancelled
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([treasuryFundId])
 }
