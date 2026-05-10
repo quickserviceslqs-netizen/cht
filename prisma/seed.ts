@@ -26,7 +26,9 @@ async function main() {
 
   // Create regions (idempotent)
   const region1 = await prisma.region.upsert({
-    where: { code_companyId: { code: 'CR', companyId: company1.id } },
+    where: { 
+      companyId_code: { code: 'CR', companyId: company1.id } 
+    },
     update: {},
     create: {
       name: 'Central Region',
@@ -36,7 +38,9 @@ async function main() {
   });
 
   const region2 = await prisma.region.upsert({
-    where: { code_companyId: { code: 'COASTAL', companyId: company1.id } },
+    where: { 
+      companyId_code: { code: 'COASTAL', companyId: company1.id } 
+    },
     update: {},
     create: {
       name: 'Coastal Region',
@@ -49,7 +53,9 @@ async function main() {
 
   // Create branches (idempotent)
   const branch1 = await prisma.branch.upsert({
-    where: { code_companyId: { code: 'NRB', companyId: company1.id } },
+    where: { 
+      companyId_code: { code: 'NRB', companyId: company1.id } 
+    },
     update: {},
     create: {
       name: 'Nairobi Branch',
@@ -60,7 +66,9 @@ async function main() {
   });
 
   const branch2 = await prisma.branch.upsert({
-    where: { code_companyId: { code: 'MBA', companyId: company1.id } },
+    where: { 
+      companyId_code: { code: 'MBA', companyId: company1.id } 
+    },
     update: {},
     create: {
       name: 'Mombasa Branch',
@@ -74,7 +82,9 @@ async function main() {
 
   // Create departments (idempotent)
   const dept1 = await prisma.department.upsert({
-    where: { code_companyId: { code: 'FIN', companyId: company1.id } },
+    where: { 
+      companyId_code: { code: 'FIN', companyId: company1.id } 
+    },
     update: {},
     create: {
       name: 'Finance Department',
@@ -85,7 +95,9 @@ async function main() {
   });
 
   const dept2 = await prisma.department.upsert({
-    where: { code_companyId: { code: 'OPS', companyId: company1.id } },
+    where: { 
+      companyId_code: { code: 'OPS', companyId: company1.id } 
+    },
     update: {},
     create: {
       name: 'Operations Department',
@@ -99,7 +111,9 @@ async function main() {
 
   // Create cost centers (idempotent)
   await prisma.costCenter.upsert({
-    where: { code_companyId: { code: 'GO-01', companyId: company1.id } },
+    where: { 
+      companyId_code: { code: 'GO-01', companyId: company1.id } 
+    },
     update: {},
     create: {
       name: 'General Operations',
@@ -271,7 +285,9 @@ async function main() {
 
   // Create treasury funds - idempotent by companyId + branchId
   const fund1 = await prisma.treasuryFund.upsert({
-    where: { companyId_branchId: { companyId: company1.id, branchId: branch1.id } },
+    where: { 
+      companyId_branchId: { companyId: company1.id, branchId: branch1.id } 
+    },
     update: {},
     create: {
       companyId: company1.id,
@@ -284,7 +300,9 @@ async function main() {
   });
 
   const fund2 = await prisma.treasuryFund.upsert({
-    where: { companyId_branchId: { companyId: company1.id, branchId: branch2.id } },
+    where: { 
+      companyId_branchId: { companyId: company1.id, branchId: branch2.id } 
+    },
     update: {},
     create: {
       companyId: company1.id,
