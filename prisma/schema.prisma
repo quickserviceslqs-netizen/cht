@@ -1,0 +1,109 @@
+// CHT (Cash. Harmony. Transparent.) - Prisma Schema
+// Lightweight cash management system for organizations
+// Learn more at: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int     @id @default(autoincrement())
+  email     String  @unique
+  password  String
+  name      String
+  role      String  // "staff", "manager", "treasurer", "ceo"
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  requisitions    Requisition[]
+  approvals       Approval[]
+  treasuryFunds   TreasuryFund[]
+}
+
+model Requisition {
+  id            Int       @id @default(autoincrement())
+  referenceNo   String    @unique @default(uuid())
+  submitterId   Int
+  submitter     User      @relation(fields: [submitterId], references: [id])
+  title         String
+  description   String
+  amount        Float
+  status        String    @default("draft") // draft, submitted, approved, rejected, executed
+  originType    String    // "staff", "manager", "ceo"
+  urgency       String?   // "normal", "urgent"
+  approvalRoute String[]  // IDs of approvers
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  approvals Approval[]
+  payments  Payment[]
+}
+
+model Approval {
+  id            Int       @id @default(autoincrement())
+  requisitionId Int
+  requisition   Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  approverId    Int
+  approver      User      @relation(fields: [approverId], references: [id])
+  status        String    // "pending", "approved", "rejected"
+  comments      String?
+  escalationReason String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Payment {
+  id            Int       @id @default(autoincrement())
+  requisitionId Int
+  requisition   Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  treasuryFundId Int
+  treasuryFund  TreasuryFund @relation(fields: [treasuryFundId], references: [id])
+  amount        Float
+  status        String    @default("pending") // pending, executed, cancelled
+  executedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model TreasuryFund {
+  id            Int       @id @default(autoincrement())
+  name          String    @unique
+  balance       Float     @default(0)
+  currency      String    @default("KES")
+  treasurerId   Int
+  treasurer     User      @relation(fields: [treasurerId], references: [id])
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  payments      Payment[]
+  ledgerEntries LedgerEntry[]
+  replenishments Replenishment[]
+}
+
+model LedgerEntry {
+  id            Int       @id @default(autoincrement())
+  treasuryFundId Int
+  treasuryFund  TreasuryFund @relation(fields: [treasuryFundId], references: [id], onDelete: Cascade)
+  description   String
+  debit         Float     @default(0)
+  credit        Float     @default(0)
+  balance       Float
+  createdAt     DateTime  @default(now())
+}
+
+model Replenishment {
+  id            Int       @id @default(autoincrement())
+  treasuryFundId Int
+  treasuryFund  TreasuryFund @relation(fields: [treasuryFundId], references: [id], onDelete: Cascade)
+  amount        Float
+  status        String    @default("pending") // pending, completed, cancelled
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
