@@ -7,11 +7,12 @@ const prisma = new PrismaClient();
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getAuthUser(req);
-    const requisitionId = parseInt(params.id);
+    const { id } = await params;
+    const requisitionId = parseInt(id);
 
     const { action, comment } = await req.json();
 
@@ -103,18 +104,18 @@ export async function POST(
     } else {
       // Approved - find next approver
       const workflowSequence = Array.isArray(requisition.workflowSequence)
-        ? requisition.workflowSequence
-        : requisition.appliedThreshold?.rolesSequence || [];
+        ? (requisition.workflowSequence as unknown as string[])
+        : (requisition.appliedThreshold?.rolesSequence as string[]) || [];
 
       const currentRoleIndex = workflowSequence.findIndex(
-        (role) => role.toLowerCase() === user.role.toLowerCase()
+        (role: any) => typeof role === 'string' && role.toLowerCase() === user.role?.toLowerCase()
       );
 
       // Find next approver
       const nextApprover = await findNextApprover(
         requisition.companyId,
         currentRoleIndex,
-        workflowSequence,
+        workflowSequence as string[],
         {
           branchId: requisition.branchId || undefined,
           regionId: requisition.regionId || undefined,

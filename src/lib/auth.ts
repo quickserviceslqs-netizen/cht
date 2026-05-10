@@ -21,7 +21,7 @@ export async function verifyAuth(req: NextRequest): Promise<AuthUser | null> {
     }
 
     const verified = await jwtVerify(token, secret);
-    return verified.payload as AuthUser;
+    return verified.payload as unknown as AuthUser;
   } catch (error) {
     console.error('Auth verification failed:', error);
     return null;

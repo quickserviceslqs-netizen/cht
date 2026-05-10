@@ -194,21 +194,30 @@ export async function POST(req: NextRequest) {
       });
 
       // Update treasury fund balance
+      const currentBalanceDecimal = typeof treasuryFund.currentBalance === 'object'
+        ? treasuryFund.currentBalance.toNumber()
+        : treasuryFund.currentBalance;
+      const newBalance = currentBalanceDecimal - amount;
+
       await prisma.treasuryFund.update({
         where: { id: treasuryFund.id },
         data: {
-          currentBalance: treasuryFund.currentBalance - amount,
+          currentBalance: newBalance,
           lastReplenished: new Date(),
         },
       });
 
       // Create ledger entry
+      const ledgerBalance = typeof treasuryFund.currentBalance === 'object'
+        ? treasuryFund.currentBalance.toNumber() - amount
+        : treasuryFund.currentBalance - amount;
+
       await prisma.ledgerEntry.create({
         data: {
           treasuryFundId: treasuryFund.id,
           description: `Payment for requisition ${requisition?.transactionId || 'unknown'}`,
           debit: amount,
-          balance: treasuryFund.currentBalance - amount,
+          balance: ledgerBalance,
         },
       });
 

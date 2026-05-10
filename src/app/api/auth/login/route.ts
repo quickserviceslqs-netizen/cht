@@ -51,7 +51,8 @@ export async function POST(request: NextRequest) {
         user: {
           id: user.id,
           email: user.email,
-          name: user.name,
+          firstName: user.firstName,
+          lastName: user.lastName,
           role: user.role,
         },
         token: 'jwt-token-here',
